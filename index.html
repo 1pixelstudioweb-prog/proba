@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Studio V4 — Ultimate Immersive Web Ecosystem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Syne:wght@700;800&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!-- KLIJENTSKE BIBLIOTEKE ZA 3D I ANIMACIJU -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+<style>
+:root {
+  --bg: #02040a;
+  --surface: rgba(6, 11, 28, 0.45);
+  --surface-solid: #050a18;
+  --blue-neon: #3b82f6;
+  --cyan-neon: #00f2fe;
+  --purple-neon: #9d4edd;
+  --pink-neon: #ff007f;
+  --text: #f1f5f9;
+  --text-muted: #475569;
+  --border: rgba(255, 255, 255, 0.05);
+  --border-glow: rgba(0, 242, 254, 0.25);
+  --font-title: 'Syne', sans-serif;
+  --font-mono: 'Space Grotesk', sans-serif;
+}
+
+.theme-purple {
+  --blue-neon: #a855f7;
+  --cyan-neon: #ff007f;
+  --purple-neon: #3b82f6;
+}
+
+/* GLOBALNI INDUSTRIJSKI RESET */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--cyan-neon), var(--pink-neon));
+  border-radius: 4px;
+}
+
+/* KURSOR PODSISTEM */
+#custom-cursor {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  transform: translate(-50%, -50%);
+  mix-blend-mode: difference;
+  transition: width 0.3s, height 0.3s;
+}
+#custom-cursor-ring {
+  position: fixed;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--cyan-neon);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99998;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.1);
+}
+
+/* KIBERNETIČKI UTovarivač */
+#loader-overlay {
+  position: fixed;
+  inset: 0;
+  background: #010206;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.loader-matrix {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: rgba(0, 242, 254, 0.15);
+  position: absolute;
+  top: 10%;
+  width: 80%;
+  height: 20%;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.loader-content {
+  text-align: center;
+  width: 340px;
+  z-index: 2;
+}
+.loader-logo {
+  font-family: var(--font-title);
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -2px;
+  background: linear-gradient(90deg, #fff, var(--cyan-neon), var(--pink-neon));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+.loader-bar-bg {
+  width: 100%;
+  height: 1px;
+  background: rgba(255,255,255,0.03);
+  margin: 1.5rem 0;
+  position: relative;
+}
+.loader-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan-neon), var(--pink-neon));
+}
+
+/* ENGINE KANVAS POZADINA */
+#webgl-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* VIRTUELNI PROSTOR SKROLA */
+#scroll-driver {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1300vh; /* 13 Masivnih sekcija za istraživanje */
+  pointer-events: none;
+  z-index: -1;
+}
+
+#viewport-pin {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 2;
+}
+
+#horizontal-track {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 1300vw;
+  height: 100vh;
+  will-change: transform;
+}
+
+section {
+  width: 100vw;
+  height: 100vh;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 10rem;
+  position: relative;
+  border-right: 1px solid rgba(255,255,255,0.02);
+}
+
+.section-content {
+  max-width: 1200px;
+  width: 100%;
+  z-index: 5;
+}
+
+/* ULTRA NAVIGACIJA SA ZVUČNIM KONTROLAMA */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 1.5rem 4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 1000;
+  background: rgba(2, 4, 10, 0.35);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 1.6rem;
+  text-decoration: none;
+  color: #fff;
+  letter-spacing: -1px;
+}
+.logo span { color: var(--pink-neon); }
+.nav-menu { display: flex; gap: 2rem; }
+.nav-item {
+  background: none;
+  border: none;
+  color: #475569;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.3s;
+}
+.nav-item.active, .nav-item:hover { color: var(--cyan-neon); }
+
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.audio-toggle, .theme-toggle {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+#global-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan-neon), var(--purple-neon), var(--pink-neon));
+  z-index: 1001;
+}
+
+/* DIZAJNERSKE STRUKTURE UNUTAR SEKCIJA */
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  color: var(--pink-neon);
+  margin-bottom: 1.5rem;
+  display: inline-block;
+  background: rgba(255, 0, 127, 0.07);
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 0, 127, 0.15);
+}
+.title {
+  font-family: var(--font-title);
+  font-size: clamp(2.5rem, 5.5vw, 5rem);
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -3px;
+  margin-bottom: 2.5rem;
+}
+.title span {
+  background: linear-gradient(135deg, var(--cyan-neon), var(--pink-neon));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.desc {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: #94a3b8;
+  max-width: 650px;
+  margin-bottom: 3rem;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  width: 100%;
+}
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3rem 2.5rem;
+  border-radius: 20px;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan-neon), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+.card:hover::before { transform: translateX(100%); }
+.card:hover {
+  border-color: var(--border-glow);
+  transform: translateY(-8px);
+  background: rgba(6, 11, 28, 0.65);
+}
+.card-num {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  position: absolute;
+  top: 2rem; right: 2rem;
+}
+.card-icon {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+}
+.card-title {
+  font-family: var(--font-title);
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.5px;
+}
+.card-desc {
+  font-size: 0.9rem;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+/* MOĆNI KORPORATIVNI KALKULATOR CIJENE (DODATO PO ŽELJI) */
+.calc-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 4rem;
+  border-radius: 24px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.calc-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.calc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.calc-row.selected {
+  border-color: var(--cyan-neon);
+  background: rgba(0, 242, 254, 0.05);
+}
+.calc-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-glow);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.calc-row.selected .calc-checkbox::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  background: var(--cyan-neon);
+  border-radius: 2px;
+}
+.calc-result-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-left: 1px solid var(--border);
+  padding-left: 4rem;
+}
+.price-display {
+  font-family: var(--font-title);
+  font-size: 5.5rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+/* DIZAJN INTEGRISANIH MODALA */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(1, 2, 5, 0.9);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  z-index: 50000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.modal-mask.open { opacity: 1; pointer-events: all; }
+.modal-box {
+  background: #040814;
+  border: 1px solid var(--border-glow);
+  padding: 4rem;
+  border-radius: 28px;
+  max-width: 550px;
+  width: 90%;
+  position: relative;
+  transform: scale(0.9);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-mask.open .modal-box { transform: scale(1); }
+.modal-close {
+  position: absolute;
+  top: 2rem; right: 2rem;
+  background: none; border: none;
+  color: #475569; font-size: 2rem; cursor: pointer;
+}
+
+/* FORMULARI I DUGMAD */
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 1.2rem 1.5rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #fff;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.3s;
+}
+.form-input:focus, .form-textarea:focus { border-color: var(--cyan-neon); }
+.form-textarea { height: 140px; resize: none; margin-bottom: 2rem; }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--cyan-neon), var(--blue-neon));
+  color: #000; border: none;
+  padding: 1.2rem 3rem; border-radius: 12px;
+  font-family: var(--font-mono); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px;
+  cursor: pointer; transition: all 0.3s;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 242, 254, 0.4);
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: #fff;
+  padding: 1rem 2.5rem;
+  border-radius: 40px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-outline:hover {
+  border-color: var(--pink-neon);
+  box-shadow: 0 0 15px rgba(255,0,127,0.2);
+}
+
+/* RECENZIJE KLIZAČ SYSTEM */
+.review-track {
+  display: flex;
+  gap: 3rem;
+  width: 100%;
+}
+.review-card {
+  background: rgba(255,255,255,0.01);
+  border-left: 3px solid var(--pink-neon);
+  padding: 2.5rem;
+  border-radius: 0 16px 16px 0;
+  max-width: 500px;
+}
+
+/* SISTEM TERMINAL UŽIVO NA DNJU */
+#system-terminal {
+  position: fixed;
+  bottom: 0; left: 0; width: 100%;
+  background: rgba(1, 2, 6, 0.85);
+  border-top: 1px solid var(--border);
+  padding: 0.4rem 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: #475569;
+  display: flex;
+  justify-content: space-between;
+  z-index: 999;
+}
+.terminal-log span { color: var(--cyan-neon); }
+
+.portfolio-img {
+  width: 100%;
+  height: 220px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
+}
+
+.stat-giant {
+  font-family: var(--font-title);
+  font-size: 6rem;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, #fff, rgba(255,255,255,0.1));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── PRICING CARDS ── */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  width: 100%;
+}
+.pricing-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 3rem 2.5rem;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+.pricing-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan-neon), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.pricing-card:hover::before { opacity: 1; }
+.pricing-card:hover {
+  border-color: var(--border-glow);
+  transform: translateY(-10px);
+  background: rgba(6, 11, 28, 0.7);
+}
+.pricing-card.featured {
+  border-color: rgba(0,242,254,0.32);
+  background: rgba(0,242,254,0.035);
+}
+.pricing-card.featured::before { opacity: 1; }
+.pricing-badge {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #000;
+  background: linear-gradient(135deg, var(--cyan-neon), var(--blue-neon));
+  padding: 0.3rem 0.85rem;
+  border-radius: 20px;
+  display: inline-block;
+  margin-bottom: 1.8rem;
+  align-self: flex-start;
+}
+.pricing-tier {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+.pricing-name {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #fff;
+  margin-bottom: 1.4rem;
+}
+.pricing-amount {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.15rem;
+  margin-bottom: 2rem;
+  line-height: 1;
+}
+.pricing-currency {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--cyan-neon);
+  padding-top: 0.5rem;
+}
+.pricing-number {
+  font-family: var(--font-title);
+  font-size: 4.5rem;
+  font-weight: 800;
+  letter-spacing: -3px;
+  background: linear-gradient(135deg, #fff 40%, rgba(255,255,255,0.4));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.pricing-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-bottom: 2.5rem;
+  flex: 1;
+}
+.pricing-features li {
+  font-size: 0.83rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  line-height: 1.5;
+}
+.pricing-features li::before {
+  content: '›';
+  color: var(--cyan-neon);
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: -1px;
+}
+.btn-pricing {
+  background: transparent;
+  border: 1px solid rgba(0,242,254,0.3);
+  color: var(--cyan-neon);
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.35s;
+  width: 100%;
+}
+.btn-pricing:hover, .pricing-card.featured .btn-pricing {
+  background: linear-gradient(135deg, var(--cyan-neon), var(--blue-neon));
+  border-color: transparent;
+  color: #000;
+  box-shadow: 0 8px 25px rgba(0,242,254,0.35);
+}
+.contact-link-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem 2rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  text-decoration: none;
+  color: var(--text);
+  transition: all 0.3s;
+  margin-bottom: 1rem;
+}
+.contact-link-card:hover {
+  border-color: var(--cyan-neon);
+  background: rgba(0,242,254,0.04);
+  transform: translateX(6px);
+  box-shadow: 0 6px 20px rgba(0,242,254,0.1);
+}
+.contact-link-icon { font-size: 1.4rem; }
+.contact-link-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  display: block;
+  margin-bottom: 0.2rem;
+  font-family: var(--font-mono);
+}
+.contact-link-value {
+  font-family: var(--font-title);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fff;
+}
+</style>
+</head>
+<body>
+
+<!-- TERMINAL MODAL -->
+<div id="system-terminal">
+  <div class="terminal-log">PIXEL_STUDIO::ENGINE_STATUS: <span>ACTIVE</span> // WebGL_PARTICLES: <span>1200_LOADED</span> // CONTACT: <span>@pixel_studio_web</span></div>
+  <div id="fps-counter">FPS: 60.0 // RENDER_TIME: 1.2ms</div>
+</div>
+
+<!-- PRELOADER EKRAN -->
+<div id="loader-overlay">
+  <div class="loader-matrix" id="loader-matrix-text"></div>
+  <div class="loader-content">
+    <div class="loader-logo">PIXEL_CORE_v4</div>
+    <div class="loader-bar-bg"><div class="loader-bar-fill" id="loader-bar-element"></div></div>
+  </div>
+</div>
+
+<!-- KURSOR -->
+<div id="custom-cursor"></div>
+<div id="custom-cursor-ring"></div>
+
+<!-- PROGRESS BAR -->
+<div id="global-progress"></div>
+
+<!-- GLAVNI KONTROLNI PANEL (NAVBAR) -->
+<nav>
+  <a href="#" class="logo" onclick="jumpToEngineSection(0)">Pixel<span>Studio</span></a>
+  <div class="nav-menu">
+    <button class="nav-item active" onclick="jumpToEngineSection(0)">Start</button>
+    <button class="nav-item" onclick="jumpToEngineSection(2)">Sistemi</button>
+    <button class="nav-item" onclick="jumpToEngineSection(4)">Kodiranje</button>
+    <button class="nav-item" onclick="jumpToEngineSection(6)">Kalkulator</button>
+    <button class="nav-item" onclick="jumpToEngineSection(9)">Projekti</button>
+    <button class="nav-item" onclick="jumpToEngineSection(12)">Kontakt</button>
+  </div>
+  <div class="nav-controls">
+    <button class="theme-toggle" onclick="toggleEngineVisualTheme()">PROMIJENI BOJU</button>
+    <button class="audio-toggle" id="audio-btn" onclick="toggleEngineAudio()">ZVUK: UGAŠEN</button>
+  </div>
+</nav>
+
+<!-- RENDER KANVAS -->
+<div id="webgl-container"></div>
+
+<!-- POKRETAČ -->
+<div id="scroll-driver"></div>
+
+<!-- KORPUS STRANICA -->
+<div id="viewport-pin">
+  <div id="horizontal-track">
+
+    <!-- SEKCIJA 1: EKORPORATIVNI HERO -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Inženjerski ekosistem v4</span>
+        <h1 class="title" data-decode>Izrada sajtova koji<br><span>drže pažnju.</span></h1>
+        <p class="desc">Dobrodošli u budućnost veba. Mi gradimo digitalne arhitekture koje spajaju munjevitu brzinu servera sa fluidnim 3D svetovima. Sve što vidite napravljeno je potpuno samostalno, bez šablona.</p>
+        <button class="btn-primary" onclick="openEngineModal('modal-init')">Započni skeniranje</button>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 2: RADIKALNI USPJEH -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Metrika performansi</span>
+        <h2 class="title" data-decode>Brzina je jedina<br><span>valuta na internetu.</span></h2>
+        <div class="grid-3">
+          <div>
+            <div class="stat-giant">99%</div>
+            <h3 style="margin: 1rem 0; font-family:var(--font-title)">Google PageSpeed</h3>
+            <p class="card-desc">Naši sajtovi dobijaju maksimalne ocjene u zelenoj zoni. Optimizacija do poslednjeg bajta.</p>
+          </div>
+          <div>
+            <div class="stat-giant">4.2x</div>
+            <h3 style="margin: 1rem 0; font-family:var(--font-title)">Veći Retention Rate</h3>
+            <p class="card-desc">Korisnici provode četiri puta više vremena na interaktivnim interfejsima nego na statičkim stranicama.</p>
+          </div>
+          <div>
+            <div class="stat-giant">0ms</div>
+            <h3 style="margin: 1rem 0; font-family:var(--font-title)">Uzaludnog Koda</h3>
+            <p class="card-desc">Bez teških i nepotrebnih biblioteka. Samo čista, namjenski pisana logika.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 3: CORE ARSENAL (USLUGE) -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Moduli arhitekture</span>
+        <h2 class="title" data-decode>Sistemi koje implementiramo<br><span>za vaše poslovanje.</span></h2>
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-num">01//</div>
+            <div class="card-icon">⚡</div>
+            <h3 class="card-title">High-Load Web Apps</h3>
+            <p class="card-desc">Aplikacije i portali dizajnirani da izdrže stotine hiljada posjeta istovremeno bez usporavanja.</p>
+          </div>
+          <div class="card">
+            <div class="card-num">02//</div>
+            <div class="card-icon">🌌</div>
+            <h3 class="card-title">WebGL & 3D Web Immersive</h3>
+            <p class="card-desc">Direktno renderovanje trodimenzionalnih objekata i okruženja unutar pretraživača bez dodataka.</p>
+          </div>
+          <div class="card">
+            <div class="card-num">03//</div>
+            <div class="card-icon">🧠</div>
+            <h3 class="card-title">AI integracije i paneli</h3>
+            <p class="card-desc">Povezivanje inteligentnih botova i automatizovanih sistema koji samostalno obrađuju podatke klijenata.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 4: DODATNI MATRIX MODULI -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Optimizacija i sigurnost</span>
+        <h2 class="title" data-decode>Izgrađeno da traje i<br><span>odoli napadima.</span></h2>
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-icon">🛡️</div>
+            <h3 class="card-title">Cyber Security Core</h3>
+            <p class="card-desc">Maksimalna zaštita podataka, SQL injekcija i XSS napada integrisana na samom nivou arhitekture.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">📈</div>
+            <h3 class="card-title">Semantički SEO Inženjering</h3>
+            <p class="card-desc">Struktura koda raspoređena tako da pretraživači indeksiraju vaš sajt na najvišim pozicijama organski.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">⚙️</div>
+            <h3 class="card-title">CMS paneli bez muke</h3>
+            <p class="card-desc">Jednostavni administrativni paneli preko kojih sami menjate tekstove i slike za 5 sekundi.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 5: RADNI TOK -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Faze realizacije</span>
+        <h2 class="title" data-decode>Od nule do proizvodnog<br><span>brutalnog sistema.</span></h2>
+        <div class="grid-4">
+          <div class="card">
+            <span style="color:var(--cyan-neon); font-family:var(--font-mono)">PHASE_01</span>
+            <h4 style="margin: 1rem 0; font-family:var(--font-title)">Duboka Analiza</h4>
+            <p class="card-desc" style="font-size:0.8rem;">Skeniramo tržište, konkurenciju i pronalazimo njihove slabe tačke.</p>
+          </div>
+          <div class="card">
+            <span style="color:var(--pink-neon); font-family:var(--font-mono)">PHASE_02</span>
+            <h4 style="margin: 1rem 0; font-family:var(--font-title)">Cyber Dizajn</h4>
+            <p class="card-desc" style="font-size:0.8rem;">Kreiramo jedinstveni prototip koji je u potpunosti prilagođen vašem brendu.</p>
+          </div>
+          <div class="card">
+            <span style="color:var(--purple-neon); font-family:var(--font-mono)">PHASE_03</span>
+            <h4 style="margin: 1rem 0; font-family:var(--font-title)">Kompajliranje</h4>
+            <p class="card-desc" style="font-size:0.8rem;">Pretvaramo odobrene vizuale u čistu, optimizovanu i brzu logiku koda.</p>
+          </div>
+          <div class="card">
+            <span style="color:var(--cyan-neon); font-family:var(--font-mono)">PHASE_04</span>
+            <h4 style="margin: 1rem 0; font-family:var(--font-title)">Lansiranje i Nadzor</h4>
+            <p class="card-desc" style="font-size:0.8rem;">Postavljanje na ultra-brze servere i praćenje analitike posjeta uživo.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 6: CIJENE PAKETA -->
+   <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Transparentne cijene</span>
+        <h2 class="title" data-decode>Izaberite paket koji<br><span>odgovara vašem cilju.</span></h2>
+
+        <div class="pricing-grid">
+
+          <!-- PAKET 1: STARTER -->
+          <div class="pricing-card">
+            <div class="pricing-tier">Paket 01 //</div>
+            <div class="pricing-name">Starter</div>
+            <div class="pricing-amount">
+              <span class="pricing-currency">€</span>
+              <span class="pricing-number">250</span>
+            </div>
+            <ul class="pricing-features">
+              <li>Landing page do 5 sekcija</li>
+              <li>Mobile-first responzivni dizajn</li>
+              <li>Kontakt forma sa email integracijom</li>
+              <li>Osnovna SEO optimizacija</li>
+              <li>Isporuka za 7–14 dana</li>
+              <li>1 round izmjena nakon isporuke</li>
+            </ul>
+            <button class="btn-pricing" onclick="openEngineModal('modal-init')">Zatraži Ponudu →</button>
+          </div>
+
+          <!-- PAKET 2: PRO (FEATURED) -->
+          <div class="pricing-card featured">
+            <div class="pricing-badge">⚡ Najpopularniji</div>
+            <div class="pricing-tier">Paket 02 //</div>
+            <div class="pricing-name">Pro</div>
+            <div class="pricing-amount">
+              <span class="pricing-currency">€</span>
+              <span class="pricing-number">350</span>
+            </div>
+            <ul class="pricing-features">
+              <li>Multi-page sajt do 8 stranica</li>
+              <li>Premium UI/UX dizajn po mjeri</li>
+              <li>GSAP animacije i micro-interakcije</li>
+              <li>Napredna SEO + meta optimizacija</li>
+              <li>Google Analytics integracija</li>
+              <li>Isporuka za 12–20 dana</li>
+              <li>2 rounds izmjena bez doplata</li>
+            </ul>
+            <button class="btn-pricing" onclick="openEngineModal('modal-init')">Zatraži Ponudu →</button>
+          </div>
+
+          <!-- PAKET 3: ELITE -->
+          <div class="pricing-card">
+            <div class="pricing-tier">Paket 03 //</div>
+            <div class="pricing-name">Elite</div>
+            <div class="pricing-amount">
+              <span class="pricing-currency">€</span>
+              <span class="pricing-number">670</span>
+            </div>
+            <ul class="pricing-features">
+              <li>Kompletan web ekosistem po mjeri</li>
+              <li>WebGL / 3D immersive iskustvo</li>
+              <li>E-Commerce ili rezervacioni sistem</li>
+              <li>Admin panel za upravljanje sadržajem</li>
+              <li>Full-stack optimizacija brzine</li>
+              <li>Isporuka za 17–24 dana</li>
+              <li>Neograničene izmjene u roku od 30 dana</li>
+            </ul>
+            <button class="btn-pricing" onclick="openEngineModal('modal-init')">Zatraži Ponudu →</button>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 7: ZASEBNE METRIKE -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Globalno prisustvo</span>
+        <h2 class="title" data-decode>Inženjering koji osvaja<br><span>svjetsko tržište.</span></h2>
+        <div class="grid-3">
+          <div class="card">
+            <div style="font-size:3.5rem; margin-bottom:1rem; font-family:var(--font-title); color:var(--cyan-neon)">14+</div>
+            <h4 style="font-family:var(--font-title); margin-bottom:0.5rem;">Zemalja širom sveta</h4>
+            <p class="card-desc">Lansirali smo digitalne sisteme za klijente iz SAD-a, Njemačke, Švajcarske, Emirata...</p>
+          </div>
+          <div class="card">
+            <div style="font-size:3.5rem; margin-bottom:1rem; font-family:var(--font-title); color:var(--pink-neon)">250M+</div>
+            <h4 style="font-family:var(--font-title); margin-bottom:0.5rem;">Procesiranih zahtjeva</h4>
+            <p class="card-desc">Naši serverski backend sistemi stabilno obrađuju milione klikova i interakcija dnevno.</p>
+          </div>
+          <div class="card">
+            <div style="font-size:3.5rem; margin-bottom:1rem; font-family:var(--font-title); color:var(--purple-neon)">00h</div>
+            <h4 style="font-family:var(--font-title); margin-bottom:0.5rem;">Kašnjenja u rokovima</h4>
+            <p class="card-desc">Zadate rokove poštujemo bespogovorno. Svaki sajt se isporučuje tačno na vrijeme.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 8: RECENZIJE KLIJENATA -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Glasovi klijenata</span>
+        <h2 class="title" data-decode>Šta kažu lideri industrija<br><span>nakon lansiranja.</span></h2>
+        <div class="review-track">
+          <div class="review-card">
+            <p style="font-style:italic; color:#94a3b8; margin-bottom:1.5rem;">"Pixel Studio nam je kompletno redefinisao online prisustvo. Naš novi 3D portfolio sajt je privukao investitore iz inostranstva već u prvoj nedjelji rada. Brutalan tim!"</p>
+            <h4 style="font-family:var(--font-title)">Marko Ristić</h4>
+            <p style="font-family:var(--font-mono); font-size:0.7rem; color:var(--cyan-neon)">CEO, Quantum Technologies</p>
+          </div>
+          <div class="review-card">
+            <p style="font-style:italic; color:#94a3b8; margin-bottom:1.5rem;">"Brzina je ono što nas je raspametilo. Sajt se učitava trenutno na mobilnim telefonima iako je pun kompleksnih animacija i 3D efekata. Saradnja bez mane."</p>
+            <h4 style="font-family:var(--font-title)">Elena Vuković</h4>
+            <p style="font-family:var(--font-mono); font-size:0.7rem; color:var(--pink-neon)">Marketing Director, Apex Logistics</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 9: IZDVOJENI RAD (PORTFOLIO GRID 1) -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Studija slučaja 01</span>
+        <h2 class="title" style="font-size:3rem; margin-bottom:1.5rem;">Cybernetic Armoury</h2>
+        <p class="desc" style="margin-bottom:2rem;">Kompletna platforma sa modularnim interfejsom napravljena za prikaz visoke tehnologije. Implementirali smo sistem dinamičkog učitavanja objekata u letu.</p>
+        <div class="grid-3">
+          <div class="card" style="padding:1.5rem;"><div class="portfolio-img"></div><h4 style="font-family:var(--font-title)">3D Konfigurator</h4></div>
+          <div class="card" style="padding:1.5rem;"><div class="portfolio-img"></div><h4 style="font-family:var(--font-title)">Ultra-Brzi Checkout</h4></div>
+          <div class="card" style="padding:1.5rem;"><div class="portfolio-img"></div><h4 style="font-family:var(--font-title)">Korisnički Panel</h4></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 10: PORTFOLIO GRID 2 -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Studija slučaja 02</span>
+        <h2 class="title" style="font-size:3rem; margin-bottom:1.5rem;">Aether Capital</h2>
+        <p class="desc" style="margin-bottom:2rem;">Finansijska platforma sa analizom tržišta i grafikonima uživo. Koristi WebGL tehnologiju kako bi prikazala složene tokove kretanja sredstava u realnom vremenu bez zagušenja procesora.</p>
+        <div class="grid-3">
+          <div class="card" style="padding:1.5rem;"><div class="portfolio-img"></div><h4 style="font-family:var(--font-title)">Real-time Grafikoni</h4></div>
+          <div class="card" style="padding:1.5rem;"><div class="portfolio-img"></div><h4 style="font-family:var(--font-title)">Kripto Sigurnost</h4></div>
+          <div class="card" style="padding:1.5rem;"><div class="portfolio-img"></div><h4 style="font-family:var(--font-title)">Automatizacija API</h4></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 11: TEHNIČKA PITANJA (FAQ ARANŽMAN) -->
+    <section>
+      <div class="section-content" style="max-width:900px;">
+        <span class="tag" data-glitch>Znanje i odgovori</span>
+        <h2 class="title" style="font-size:3.5rem;">Često postavljana<br><span>pitanja o sistemima.</span></h2>
+        <div style="display:flex; flex-direction:column; gap:1.5rem; margin-top:2rem; width:100%;">
+          <div style="background:rgba(255,255,255,0.01); padding:2rem; border-radius:12px; border:1px solid var(--border)">
+            <h4 style="font-family:var(--font-title); margin-bottom:0.5rem; color:#fff">Koliko košta održavanje ovakvog sajta?</h4>
+            <p class="card-desc">Minimalno. Naš kod pišemo tako da bude samoodrživ. Serveri koje preporučujemo imaju automatizovan bekap sistem i visoke bezbednosne protokole.</p>
+          </div>
+          <div style="background:rgba(255,255,255,0.01); padding:2rem; border-radius:12px; border:1px solid var(--border)">
+            <h4 style="font-family:var(--font-title); margin-bottom:0.5rem; color:#fff">Da li možemo sami dodavati tekstove i slike?</h4>
+            <p class="card-desc">Apsolutno da. Prilikom isporuke integrišemo administratorski portal pomoću kojeg na jednostavan klik dodajete nove radove, blogove ili mijenjate cijene.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 12: ZASEBNI TEHNIČKI CERTIFIKATI -->
+    <section>
+      <div class="section-content">
+        <span class="tag" data-glitch>Usklađenost i standardi</span>
+        <h2 class="title" data-decode>Garantovane performanse<br><span>i globalni protokoli.</span></h2>
+        <div class="grid-4">
+          <div class="card" style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:1rem;">⚡</div>
+            <h4 style="font-family:var(--font-title)">Core Web Vitals</h4>
+            <p class="card-desc" style="font-size:0.75rem;">Maksimalna optimizacija brzine renderovanja prve komponente na ekranu.</p>
+          </div>
+          <div class="card" style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:1rem;">🔒</div>
+            <h4 style="font-family:var(--font-title)">SSL & HTTPS Core</h4>
+            <p class="card-desc" style="font-size:0.75rem;">Enkripcija podataka na najvišem vojnom nivou tokom svake transakcije.</p>
+          </div>
+          <div class="card" style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:1rem;">📱</div>
+            <h4 style="font-family:var(--font-title)">Fluid Mobile UI</h4>
+            <p class="card-desc" style="font-size:0.75rem;">Savršeno kretanje i prikaz na svim ekranima od telefona do 4K monitora.</p>
+          </div>
+          <div class="card" style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:1rem;">🕸️</div>
+            <h4 style="font-family:var(--font-title)">W3C Validated</h4>
+            <p class="card-desc" style="font-size:0.75rem;">Kod usklađen sa zvaničnim svjetskim standardima za veb razvoj.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKCIJA 13: MASIVNI FINALNI KORAK + KONTAKT -->
+    <section style="background: linear-gradient(90deg, transparent, rgba(0, 242, 254, 0.01));">
+      <div class="section-content">
+        <div class="input-row" style="grid-template-columns: 1fr 1.2fr; gap:5rem; align-items:center;">
+          <div>
+            <span class="tag" data-glitch>Inicijalizacija projekta</span>
+            <h2 class="title" style="font-size:3rem; margin-bottom:1.5rem;">Započnimo kôd vašeg<span> novog uspjeha.</span></h2>
+            <p class="desc" style="font-size:0.9rem;">Unesite podatke i pokrenite proces. Naša mašina preuzima rad i isporučuje vam rješenje kakvo vaša konkurencija ne može ni da zamisli.</p>
+
+            <div style="margin-top:2.5rem;">
+              <div style="font-family:var(--font-mono); font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:3px; margin-bottom:1.2rem;">Direktan kontakt</div>
+              <a href="mailto:1pixelstudioweb@gmail.com" class="contact-link-card">
+                <span class="contact-link-icon">📧</span>
+                <div>
+                  <span class="contact-link-label">Email</span>
+                  <span class="contact-link-value">1pixelstudioweb@gmail.com</span>
+                </div>
+              </a>
+              <a href="https://www.instagram.com/pixel_studio_web/" target="_blank" rel="noopener" class="contact-link-card">
+                <span class="contact-link-icon">📸</span>
+                <div>
+                  <span class="contact-link-label">Instagram</span>
+                  <span class="contact-link-value">@pixel_studio_web</span>
+                </div>
+              </a>
+            </div>
+          </div>
+          
+          <div style="background: rgba(255,255,255,0.01); border:1px solid var(--border); padding:3.5rem; border-radius:24px; backdrop-filter:blur(10px);">
+            <form id="cyber-contact-form" onsubmit="executeEngineFormSubmit(event)">
+              <div class="input-row">
+                <input type="text" class="form-input" placeholder="Vaše Ime" required>
+                <input type="email" class="form-input" placeholder="Vaša E-mail adresa" required>
+              </div>
+              <input type="text" class="form-input" placeholder="Naziv Kompanije / Projekta" style="margin-bottom:1.5rem;" required>
+              <textarea class="form-textarea" placeholder="Unesite detalje projekta ili ciljeve..." required></textarea>
+              <button type="submit" class="btn-primary" style="width:100%;">POKRENI KODIRANJE</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- NAMJENSKI MODAL ZA REZERVACIJU -->
+<div class="modal-mask" id="modal-init">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeEngineModals()">×</button>
+    <h3 class="title" style="font-size:2rem; margin-bottom:0.5rem;">Inicijalizacija Saradnje</h3>
+    <p class="card-desc" style="margin-bottom:2rem;">Ostavite email ili nas kontaktirajte direktno — odgovaramo u roku od 24h.</p>
+    <form onsubmit="executeEngineFormSubmit(event)">
+      <input type="email" class="form-input" placeholder="Vaš poslovni email" style="margin-bottom:1.5rem;" required>
+      <button type="submit" class="btn-primary" style="width:100%; margin-bottom:2rem;">Potvrdi Termine</button>
+    </form>
+    <div style="border-top:1px solid var(--border); padding-top:1.5rem;">
+      <div style="font-family:var(--font-mono); font-size:0.6rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:3px; margin-bottom:1rem;">Ili nas kontaktirajte direktno</div>
+      <a href="mailto:1pixelstudioweb@gmail.com" class="contact-link-card" style="margin-bottom:0.75rem;">
+        <span class="contact-link-icon">📧</span>
+        <div>
+          <span class="contact-link-label">Gmail</span>
+          <span class="contact-link-value">1pixelstudioweb@gmail.com</span>
+        </div>
+      </a>
+      <a href="https://www.instagram.com/pixel_studio_web/" target="_blank" rel="noopener" class="contact-link-card">
+        <span class="contact-link-icon">📸</span>
+        <div>
+          <span class="contact-link-label">Instagram</span>
+          <span class="contact-link-value">@pixel_studio_web</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<!-- ─────────────────────────────────────────────────────────────────
+     MOĆAN KOD MAŠINERIJE: 3D ČESTICE, AUDIO SINTISAJZER I GLITCH LOGIKA
+     ───────────────────────────────────────────────────────────────── -->
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+// ── DIGITALNI SINTISAJZER ZVUKA (WEB AUDIO API - PO MOJOJ ŽELJI) ──
+let audioCtx = null;
+let audioEngineActive = false;
+
+function initEngineAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+
+function playEngineSound(frequency, type, duration, volume) {
+  if (!audioEngineActive) return;
+  initEngineAudioContext();
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+    
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch(e) {}
+}
+
+function toggleEngineAudio() {
+  audioEngineActive = !audioEngineActive;
+  const btn = document.getElementById('audio-btn');
+  if (audioEngineActive) {
+    initEngineAudioContext();
+    btn.innerText = "ZVUK: UPALJEN";
+    btn.style.borderColor = "var(--cyan-neon)";
+    playEngineSound(600, 'sine', 0.1, 0.1);
+  } else {
+    btn.innerText = "ZVUK: UGAŠEN";
+    btn.style.borderColor = "var(--border)";
+  }
+}
+
+
+// ── MEHANIKA KURSORA ──
+const cursor = document.getElementById('custom-cursor');
+const ring = document.getElementById('custom-cursor-ring');
+let mX = -100, mY = -100, rX = -100, rY = -100;
+
+document.addEventListener('mousemove', (e) => {
+  mX = e.clientX; mY = e.clientY;
+  cursor.style.left = mX + 'px';
+  cursor.style.top = mY + 'px';
+});
+
+function syncCursorRing() {
+  rX += (mX - rX) * 0.12;
+  rY += (mY - rY) * 0.12;
+  ring.style.left = rX + 'px';
+  ring.style.top = rY + 'px';
+  requestAnimationFrame(syncCursorRing);
+}
+syncCursorRing();
+
+// DODAVANJE SAKRALNIH ZVUKOVA NA SVAKI INTERAKTIVNI HOVER ELEMENATA
+function hookUiAudioInteractions() {
+  document.querySelectorAll('button, a, .card, .calc-row, input, textarea').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      cursor.style.width = '12px'; cursor.style.height = '12px';
+      ring.style.transform = 'translate(-50%, -50%) scale(1.3)';
+      ring.style.borderColor = 'var(--pink-neon)';
+      playEngineSound(800, 'sine', 0.05, 0.03); // Suptilan cyber klik
+    });
+    el.addEventListener('mouseleave', () => {
+      cursor.style.width = '6px'; cursor.style.height = '6px';
+      ring.style.transform = 'translate(-50%, -50%) scale(1)';
+      ring.style.borderColor = 'var(--cyan-neon)';
+    });
+  });
+}
+
+
+// ── KIBERNETIČKI PRELOADER (ISPIS MATRIX LOGOVA) ──
+const loaderOverlay = document.getElementById('loader-overlay');
+const matrixTextContainer = document.getElementById('loader-matrix-text');
+let currentPercentage = 0;
+
+const preloaderPhrases = [
+  "HEX_INIT::SYS_LOAD...", "COMPILE::THREE_MESH_GRID", 
+  "AUDIO_SYNTH::INIT_OSCILLATORS", "MATRIX::GENERATE_PARTICLES_1200", 
+  "GSAP::SYNC_TRACKS", "CORE::STABILIZE_RENDER_60FPS"
+];
+
+const preloaderInterval = setInterval(() => {
+  currentPercentage += Math.floor(Math.random() * 5) + 1;
+  
+  // Random ispis lažnih kiber logova na ekranu učitavanja
+  if (Math.random() > 0.4) {
+    matrixTextContainer.innerHTML += preloaderPhrases[Math.floor(Math.random() * preloaderPhrases.length)] + "<br>";
+    if (matrixTextContainer.innerHTML.length > 400) matrixTextContainer.innerHTML = "";
+  }
+
+  if (currentPercentage >= 100) {
+    currentPercentage = 100;
+    clearInterval(preloaderInterval);
+    
+    gsap.timeline()
+      .to(loaderOverlay, { opacity: 0, duration: 0.8, ease: 'power2.inOut' })
+      .call(() => {
+        loaderOverlay.style.display = 'none';
+        triggerGlitchDecoderAnimation();
+      })
+      .from('.title', { y: 50, opacity: 0, duration: 1, ease: 'power4.out', stagger: 0.15 });
+  }
+  document.getElementById('loader-bar-element').style.width = currentPercentage + '%';
+}, 30);
+
+
+// ── THREE.JS KOD: KREIRANJE SCENE, MODELA I 1200 ČESTICA ZVIJEZDA ──
+const container = document.getElementById('webgl-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+// Osvjetljenje
+const lights = [
+  new THREE.PointLight(0x00f2fe, 2, 40),
+  new THREE.PointLight(0xff007f, 2, 40)
+];
+lights[0].position.set(4, 4, 4);
+lights[1].position.set(-4, -4, 4);
+lights.forEach(l => scene.add(l));
+scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+
+// GLAVNI MATERIJAL ZA MOJE TEXTURE RADIKALNE GEOMETRIJE
+const coreWireframeMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffffff, wireframe: true, roughness: 0.2, metalness: 0.8
+});
+
+// MODELI
+const meshTorusKnot = new THREE.Mesh(new THREE.TorusKnotGeometry(1, 0.35, 140, 18), coreWireframeMaterial);
+const meshSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 2), coreWireframeMaterial);
+const meshBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), coreWireframeMaterial);
+scene.add(meshTorusKnot, meshSphere, meshBox);
+
+meshTorusKnot.position.set(1.6, 0, 1.5);
+meshSphere.position.set(8, -5, -10);
+meshBox.position.set(15, 5, -10);
+
+// POPUNJAVANJE SVEMIRA: 1200 ČESTICA (PARTICLES SYSTEM - MOJA ŽELJA)
+const particleGeometry = new THREE.BufferGeometry();
+const particleCount = 1200;
+const particlePositions = new Float32Array(particleCount * 3);
+
+for(let i = 0; i < particleCount * 3; i += 3) {
+  particlePositions[i] = (Math.random() - 0.5) * 45;      // X koordinata
+  particlePositions[i + 1] = (Math.random() - 0.5) * 25;  // Y koordinata
+  particlePositions[i + 2] = (Math.random() - 0.5) * 40;  // Z koordinata
+}
+
+particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+const particleMaterial = new THREE.PointsMaterial({
+  size: 0.06, color: 0x00f2fe, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending
+});
+const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+scene.add(particleSystem);
+
+camera.position.z = 6.5;
+
+
+// ── GSAP PROGRESIVNI HORIZONTALNI SKROL TOK ──
+const track = document.getElementById('horizontal-track');
+const navItems = document.querySelectorAll('.nav-item');
+let activeScrollVelocity = 0;
+
+let masterTimeline = gsap.timeline({
+  scrollTrigger: {
+    trigger: "#scroll-driver",
+    start: "top top", end: "bottom bottom",
+    scrub: 1.2,
+    onUpdate: (self) => {
+      const targetX = self.progress * (track.scrollWidth - window.innerWidth);
+      gsap.set(track, { x: -targetX });
+      
+      // Praćenje brzine skrola (kako bi čestice u Three.js reagovale ubrzanjem)
+      activeScrollVelocity = Math.abs(self.getVelocity() * 0.001);
+      
+      document.getElementById('global-progress').style.width = (self.progress * 100) + '%';
+      
+      // Aktivacija dugmića u meniju
+      const segment = Math.min(Math.floor(self.progress * 6), 5);
+      navItems.forEach((btn, index) => {
+        if(index === segment) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+    }
+  }
+});
+
+// KOREOGRAFIJA KRETANJA KROZ 13 SEKCIJA
+masterTimeline
+  .to(meshTorusKnot.position, { x: -1.8, y: 0.2, z: 2.5, ease: "none" }, 0.0)
+  .to(meshTorusKnot.rotation, { x: 3, y: 2, ease: "none" }, 0.0)
+  .to(meshSphere.position, { x: 1.5, y: -0.3, z: 3, ease: "none" }, 0.15)
+  .to(meshTorusKnot.position, { x: -8, z: -10 }, 0.28)
+  .to(meshBox.position, { x: -1.5, y: -0.2, z: 3.2, ease: "none" }, 0.45)
+  .to(meshBox.rotation, { x: 4, z: 3, ease: "none" }, 0.45)
+  .to(meshSphere.position, { x: -10, y: 4, z: -5 }, 0.55)
+  .to(meshBox.position, { x: 1.8, y: 0.5, z: 2 }, 0.75)
+  .to(meshBox.rotation, { y: 6 }, 0.75);
+
+
+// ── FUNKCIONALNI DYNAMIC KALKULATOR ──
+let currentBasePrice = 1500;
+function toggleEngineCalcItem(element, priceValue) {
+  element.classList.toggle('selected');
+  playEngineSound(440, 'triangle', 0.1, 0.05);
+  
+  if(element.classList.contains('selected')) {
+    currentBasePrice += priceValue;
+  } else {
+    currentBasePrice -= priceValue;
+  }
+  
+  // Animacija rasta cifara
+  gsap.to('#calc-price-value', {
+    innerText: currentBasePrice,
+    duration: 0.4,
+    snap: { innerText: 1 }
+  });
+}
+
+// MATEMATIČKI GLITCH DEKODER EKRANA (EFEKAT NASLOVA)
+function triggerGlitchDecoderAnimation() {
+  document.querySelectorAll('[data-decode]').forEach(el => {
+    const originalText = el.innerText;
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_@#$";
+    let iterations = 0;
+    
+    const interval = setInterval(() => {
+      el.innerText = originalText.split("").map((letter, idx) => {
+        if(idx < iterations) return originalText[idx];
+        return letters[Math.floor(Math.random() * letters.length)];
+      }).join("");
+      
+      if(iterations >= originalText.length) clearInterval(interval);
+      iterations += 1/3;
+    }, 25);
+  });
+}
+
+
+// GLATKO NAVIGACIONO JUMP-OVANJE
+function jumpToEngineSection(sectionIdx) {
+  const scrollDriver = document.getElementById('scroll-driver');
+  const maxScroll = scrollDriver.scrollHeight - window.innerHeight;
+  const target = (sectionIdx / 12) * maxScroll; // 12 koraka kroz 13 sekcija
+  
+  playEngineSound(520, 'sine', 0.15, 0.05);
+  window.scrollTo({ top: target, behavior: 'smooth' });
+}
+
+// UPRAVLJANJE MODALIMA
+function openEngineModal(id) {
+  document.getElementById(id).classList.add('open');
+  playEngineSound(300, 'sine', 0.2, 0.05);
+}
+function closeEngineModals() {
+  document.querySelectorAll('.modal-mask').forEach(m => m.classList.remove('open'));
+}
+function executeEngineFormSubmit(e) {
+  e.preventDefault();
+  playEngineSound(880, 'sine', 0.1, 0.1);
+  setTimeout(() => playEngineSound(1200, 'sine', 0.2, 0.1), 80); // Pobjednički cyberpunk akord
+  alert("Sistem je uspješno verifikovao podatke. Pokrećemo izradu!");
+  closeEngineModals();
+  e.target.reset();
+}
+
+// ZAMJENA VIZUELNIH PROFILA TEMA
+function toggleEngineVisualTheme() {
+  document.body.classList.toggle('theme-purple');
+  playEngineSound(700, 'sine', 0.08, 0.04);
+  
+  if(document.body.classList.contains('theme-purple')) {
+    particleMaterial.color.setHex(0xff007f);
+  } else {
+    particleMaterial.color.setHex(0x00f2fe);
+  }
+}
+
+
+// ── REAL-TIME PETLJA RENDERA I FPS COUNTER (OŽIVLJAVANJE KOZMSA) ──
+const clock = new THREE.Clock();
+let frameCount = 0;
+let lastFpsUpdateTime = 0;
+
+function coreEngineRenderLoop() {
+  const elapsedTime = clock.getElapsedTime();
+  frameCount++;
+  
+  // Računanje FPS performansi u realnom vremenu
+  if(performance.now() - lastFpsUpdateTime >= 1000) {
+    document.getElementById('fps-counter').innerText = `FPS: ${frameCount}.0 // RENDER_TIME: 1.1ms`;
+    frameCount = 0;
+    lastFpsUpdateTime = performance.now();
+  }
+
+  // Konstantne sitne rotacije modela
+  meshTorusKnot.rotation.y += 0.006;
+  meshTorusKnot.rotation.z += 0.002;
+  meshSphere.rotation.y += 0.004;
+  meshBox.rotation.x += 0.005;
+  
+  // Lebdenje u nultoj gravitaciji
+  meshTorusKnot.position.y += Math.sin(elapsedTime * 2.5) * 0.0012;
+  meshSphere.position.y += Math.cos(elapsedTime * 2) * 0.001;
+  meshBox.position.y += Math.sin(elapsedTime * 1.5) * 0.0015;
+
+  // ANIMACIJA ČESTICA NA OSNOVU BRZINE SKROLA (Hiper-svemir efekat)
+  particleSystem.rotation.y = elapsedTime * 0.02;
+  // Kada skrolaš brzo, čestice dobijaju potisak prema naprijed kroz dubinu (Z osa)
+  const positions = particleGeometry.attributes.position.array;
+  for(let i = 2; i < particleCount * 3; i += 3) {
+    positions[i] += 0.02 + activeScrollVelocity * 1.5; // Ako se skrola brzo, čestice jure naprijed
+    if(positions[i] > 20) {
+      positions[i] = -20; // Vraćanje čestice u dubinu kada prođe kameru
+    }
+  }
+  particleGeometry.attributes.position.needsUpdate = true;
+
+  // Interaktivno naginjanje scene u odnosu na miš
+  scene.rotation.y = (mX / window.innerWidth - 0.5) * 0.15;
+  scene.rotation.x = (mY / window.innerHeight - 0.5) * 0.1;
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(coreEngineRenderLoop);
+  
+  // Vraćanje brzine skrola u normalu kada se točkić zaustavi
+  activeScrollVelocity *= 0.95;
+}
+
+// Inicijalizacija sistema
+coreEngineRenderLoop();
+hookUiAudioInteractions();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
